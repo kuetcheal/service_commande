@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   mysql:
     image: mysql:8.0
@@ -7,7 +6,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: service_commande
     ports:
-      - "3309:3306"          # différent des autres services
+      - "3309:3306"
     volumes:
       - mysql_data_commande:/var/lib/mysql
     healthcheck:
@@ -15,21 +14,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
-
-  rabbitmq:
-    image: rabbitmq:3.13-management
-    container_name: rabbitmq_commande
-    ports:
-      - "5673:5672"          # si un autre RabbitMQ tourne déjà en 5672/15672, change les ports côté host
-      - "15673:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
+    restart: unless-stopped
+    networks: [ms-net]
 
   service_commande:
     build: .
@@ -37,22 +23,31 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+
+    env_file:
+      - C:/Users/epsiap/secrets/.env.jwt
+
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/service_commande?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql_commande:3306/service_commande?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
-      SERVER_PORT: 8080
-      JWT_SECRET: "mYmvI1eMKEhT8/LciNCcJqyqSg9XKzTuNNmemn0fAnA="
 
-      # ---- RabbitMQ ----
-      SPRING_RABBITMQ_HOST: rabbitmq         # hostname = nom du service compose
-      SPRING_RABBITMQ_PORT: 5672             # port *interne* du conteneur
+      # Broker partagé du repo service_client
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
+
+      SERVER_PORT: 8080
+      JWT_SECRET: "mYmvI1eMKEhT8/LciNCcJqyqSg9XKzTuNNmemn0fAnA="
     ports:
-      - "8082:8080"
+      - "8084:8080"         # <-- change ici
+    restart: unless-stopped
+    networks: [ms-net]
 
 volumes:
   mysql_data_commande:
+
+networks:
+  ms-net:
+    external: true

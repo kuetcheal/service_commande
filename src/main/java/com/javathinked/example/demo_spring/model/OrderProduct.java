@@ -1,6 +1,9 @@
 package com.javathinked.example.demo_spring.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "order_product")
@@ -10,21 +13,31 @@ public class OrderProduct {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Relation vers Order (corrige le "mappedBy = order" dans Order.java)
-    @ManyToOne
+    // relation -> orders.id (colonne order_id NOT NULL)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
+    @JsonIgnore // évite la récursion JSON si tu renvoies un OrderProduct
     private Order order;
 
-    // On stocke uniquement l'identifiant du produit (clé étrangère logique)
+    // identifiant du produit (pas de FK cross-service)
     @Column(name = "product_id", nullable = false)
     private Long productId;
 
-    // === Constructeurs ===
+    // quantité commandée
+    @Column(nullable = false)
+    private Integer quantity = 1;
+
+    // prix unitaire figé au moment de la commande
+    @Column(name = "unit_price_snapshot", nullable = false, precision = 10, scale = 2)
+    private BigDecimal unitPriceSnapshot = BigDecimal.ZERO;
+
     public OrderProduct() {}
 
-    public OrderProduct(Order order, Long productId) {
+    public OrderProduct(Order order, Long productId, Integer quantity, BigDecimal unitPriceSnapshot) {
         this.order = order;
         this.productId = productId;
+        this.quantity = (quantity == null ? 1 : quantity);
+        this.unitPriceSnapshot = (unitPriceSnapshot == null ? BigDecimal.ZERO : unitPriceSnapshot);
     }
 
     // === Getters / Setters ===
@@ -36,4 +49,10 @@ public class OrderProduct {
 
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
+
+    public Integer getQuantity() { return quantity; }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
+    public BigDecimal getUnitPriceSnapshot() { return unitPriceSnapshot; }
+    public void setUnitPriceSnapshot(BigDecimal unitPriceSnapshot) { this.unitPriceSnapshot = unitPriceSnapshot; }
 }

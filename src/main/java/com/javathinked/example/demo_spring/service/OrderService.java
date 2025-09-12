@@ -1,7 +1,6 @@
 package com.javathinked.example.demo_spring.service;
 
 import com.javathinked.example.demo_spring.model.Order;
-
 import java.util.List;
 
 public interface OrderService {

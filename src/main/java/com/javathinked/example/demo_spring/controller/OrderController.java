@@ -1,12 +1,18 @@
 package com.javathinked.example.demo_spring.controller;
 
+import com.javathinked.example.demo_spring.dto.OrderDto;
 import com.javathinked.example.demo_spring.dto.events.OrderCreatedEvent;
+import com.javathinked.example.demo_spring.mapper.OrderMapper;
 import com.javathinked.example.demo_spring.messaging.OrderPublisher;
 import com.javathinked.example.demo_spring.model.Order;
 import com.javathinked.example.demo_spring.service.OrderService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 
@@ -23,26 +29,40 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
-        // 1) Persist
-        Order saved = orderService.saveOrder(order);
+    public ResponseEntity<OrderDto> createOrder(@Valid @RequestBody OrderDto dto) {
+        if (dto.getCustomerId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "customerId is required");
+        }
 
-        // 2) (Optionnel) Publier l’événement réel ici si tu as les productIds
-        // List<Long> productIds = orderService.findProductIdsForOrder(saved.getId()); // si tu as cette méthode
-        // OrderCreatedEvent evt = new OrderCreatedEvent(saved.getId(), saved.getCustomerId(), productIds, Instant.now(), "service-commande", 1);
+        // 1) persister
+        Order toSave = OrderMapper.fromCreateDto(dto);
+        Order saved  = orderService.saveOrder(toSave);
+
+        // 2) (optionnel) publier un évènement après avoir ajouté les lignes
+        // OrderCreatedEvent evt = new OrderCreatedEvent(
+        //         saved.getId(), saved.getCustomerId(), List.of(), Instant.now(), "service-commande", 1
+        // );
         // orderPublisher.publishOrderCreated(evt);
 
-        return ResponseEntity.ok(saved);
+        OrderDto body = OrderMapper.toDto(saved);
+        return ResponseEntity
+                .created(URI.create("/api/orders/" + saved.getId()))
+                .body(body);
     }
 
     @GetMapping
-    public ResponseEntity<List<Order>> getAllOrders() {
-        return ResponseEntity.ok(orderService.getAllOrders());
+    public ResponseEntity<List<OrderDto>> getAllOrders() {
+        List<OrderDto> result = orderService.getAllOrders()
+                .stream()
+                .map(OrderMapper::toDto)
+                .toList();
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
-        return ResponseEntity.ok(orderService.getOrderById(id));
+    public ResponseEntity<OrderDto> getOrderById(@PathVariable Long id) {
+        Order order = orderService.getOrderById(id);
+        return ResponseEntity.ok(OrderMapper.toDto(order));
     }
 
     @DeleteMapping("/{id}")
@@ -51,8 +71,7 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 
-    // --- Endpoint de test RabbitMQ ---
-    // POST http://localhost:8082/api/orders/test-publish?orderId=1&customerId=12&productIds=2,5
+    // --- Endpoint de test RabbitMQ (optionnel) ---
     @PostMapping("/test-publish")
     public ResponseEntity<String> testPublishOrder(
             @RequestParam Long orderId,
@@ -60,12 +79,7 @@ public class OrderController {
             @RequestParam List<Long> productIds
     ) {
         OrderCreatedEvent evt = new OrderCreatedEvent(
-                orderId,
-                customerId,
-                productIds,
-                Instant.now(),
-                "service-commande",
-                1
+                orderId, customerId, productIds, Instant.now(), "service-commande", 1
         );
         orderPublisher.publishOrderCreated(evt);
         return ResponseEntity.ok("OrderCreatedEvent publié vers RabbitMQ");
