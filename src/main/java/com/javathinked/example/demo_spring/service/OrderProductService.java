@@ -6,7 +6,7 @@ import com.javathinked.example.demo_spring.model.OrderProduct;
 import java.util.List;
 
 public interface OrderProductService {
-    // Nouveau: création via DTO
+    // création via DTO { orderId, productId, quantity, unitPriceSnapshot }
     OrderProduct createFromDto(OrderProductDto dto);
 
     // CRUD classiques

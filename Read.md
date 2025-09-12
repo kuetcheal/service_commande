@@ -30,3 +30,10 @@ Cela garantit que seul un client front-end connu peut communiquer avec l’API, 
 
 
 ###  eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJBTEVYQU5EUkUiLCJpYXQiOjE3NTQ5MDI2MzEsImV4cCI6MTc1NDkwNjIzMSwicm9sZXMiOlsiUk9MRV9VU0VSIl19.kzQ08UntcRXVGJ8QU-_qOCbkWExDfV7dr7vNrYe5yYc
+
+
+### tests unitaires avec Junit 5 et Mockito
+ * ici les tests unitaires seront éffecutés sur les classes telles ques : 
+- Les services (classes de logique métier)
+- Les contrôleurs (API endpoints)
+- Les classes utilitaires

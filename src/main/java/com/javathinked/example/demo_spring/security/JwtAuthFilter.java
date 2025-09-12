@@ -1,6 +1,6 @@
 package com.javathinked.example.demo_spring.security;
 
-import com.javathinked.example.demo_spring.util.JwtUtil;  
+import com.javathinked.example.demo_spring.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +26,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String sp = request.getServletPath();
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
+        return sp.startsWith("/actuator/") || "/error".equals(sp);
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
@@ -33,17 +40,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7); // <-- OK
+        if (authHeader != null && authHeader.startsWith("Bearer ")
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            if (jwtUtil.validate(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
+            String token = authHeader.substring(7);
+
+            if (jwtUtil.validate(token)) {
                 String username = jwtUtil.extractUsername(token);
-                List<String> roles = jwtUtil.extractRoles(token); // ["ROLE_USER", "ROLE_ADMIN"]
+                List<String> roles = jwtUtil.extractRoles(token);
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 username,
-                                null, // <-- pas d'arguments nommés en Java
+                                null,
                                 roles.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList())
                         );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
