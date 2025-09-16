@@ -18,7 +18,7 @@ services:
     networks: [ms-net]
 
   service-commande:
-    build: .
+    image: ghcr.io/kuetcheal/service_commande:${TAG:-develop}
     container_name: service-commande
     depends_on:
       mysql-commande:
